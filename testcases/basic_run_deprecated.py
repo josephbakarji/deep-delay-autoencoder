@@ -18,12 +18,6 @@ import itertools
 import random 
 from basic_params import params
 
-def get_hyperparameter_list(hyperparams):
-    def dict_product(dicts):
-        return [dict(zip(dicts, x)) for x in itertools.product(*dicts.values())]
-    hyperparams_list = dict_product(hyperparams)
-    random.shuffle(hyperparams_list)
-    return hyperparams_list
 
 def generate_data(params):
     if params['model'] == 'lorenz':

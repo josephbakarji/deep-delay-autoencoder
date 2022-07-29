@@ -11,7 +11,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 import pdb
 from sklearn.preprocessing import StandardScaler
-from basic_run import generate_data
 from sindy_utils import library_size, sindy_library
 from net_config import Sindy_Autoencoder, PreSVD_Sindy_Autoencoder, RfeUpdateCallback, SindyCall
 
@@ -40,7 +39,7 @@ class TrainModel:
             print('Running SVD decomposition...')
             input_dim = params['svd_dim']
             reduced_dim = int( params['svd_dim'] )
-            U, s, VT = np.linalg.svd(self.data.x.T, full_matrices=False)
+            U, s, VT = np.linalg.svd(self.data.x, full_matrices=False)
             v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
             if params['scale'] == True:
                 scaler = StandardScaler()
@@ -78,8 +77,8 @@ class TrainModel:
 
     def get_data(self):
         # Split into train and test sets
-        train_x, test_x = train_test_split(self.data.x, train_size=self.params['train_ratio'], shuffle=False)
-        train_dx, test_dx = train_test_split(self.data.dx, train_size=self.params['train_ratio'], shuffle=False)
+        train_x, test_x = train_test_split(self.data.x.T, train_size=self.params['train_ratio'], shuffle=False)
+        train_dx, test_dx = train_test_split(self.data.dx.T, train_size=self.params['train_ratio'], shuffle=False)
         train_data = [train_x, train_dx]  
         test_data = [test_x, test_dx]  
         if self.params['svd_dim'] is not None:
@@ -203,16 +202,6 @@ def get_callbacks(params, savename, x=None, t=None):
     if params['coefficient_threshold'] is not None:
         callback_list.append(RfeUpdateCallback(rfe_frequency=params['threshold_frequency']))
     
-    # Tensorboard visualization of training
-    if params['tensorboard']:
-        logdir = get_run_logdir(os.curdir)
-        tensorboard_cb = tf.keras.callbacks.TensorBoard(logdir)
-        callback_list.append(tensorboard_cb)
-
-        ## Paste code below in notebooks to display
-        # %load_ext tensorboard
-        # %tensorboard --logdir=./my_logs --port=6007
-    
     # Early stopping in when training stops improving
     if params['patience'] is not None:
         callback_list.append(tf.keras.callbacks.EarlyStopping(patience=params['patience'], monitor='val_total_loss'))
@@ -243,10 +232,14 @@ def get_callbacks(params, savename, x=None, t=None):
         params2 = params.copy()
         params2['tend'] = 200
         params2['n_ics'] = 1
-        data_test = generate_data(params2)
+
+        # Change and NOT TESTED 
+        data2 = self.data.copy()
+        data2.run_sim(params2['n_ics'], params2['tend'], params2['dt'])
+
         print('Done..')
-        x = data_test.x
-        t = data_test.t[:data_test.x.shape[0]]
+        x = data2.x
+        t = data2.t[:data_test.x.shape[0]]
         callback_list.append(SindyCall(threshold=params2['sindy_threshold'], update_freq=params2['sindycall_freq'], x=x, t=t))
         
     return callback_list

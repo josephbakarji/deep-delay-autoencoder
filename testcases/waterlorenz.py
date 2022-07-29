@@ -14,7 +14,6 @@ import json
 class LorenzWW:
     # Can use inheritence 
     def __init__(self, 
-            option='delay',
             noise=0.0, # Not used in this case
             linear=False, # Not used in this case 
             input_dim=128,
