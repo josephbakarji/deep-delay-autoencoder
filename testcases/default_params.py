@@ -3,7 +3,7 @@ import sys
 sys.path.append('../../')
 
 params = {}
-params['data_path'] = '/Users/josephbakarji/Documents/academic/research/delay-auto-embedding/github_repo/examples/data/'
+params['data_path'] = '/Users/josephbakarji/Documents/academic/research/delay-auto-embedding/github_repo/testcases/results'
 
 params['case'] = 'rando'
 params['model'] = 'predator_prey'
@@ -41,7 +41,6 @@ params['trainable_auto'] = True
 params['sindy_pert'] = 0.0
 
 # loss function weighting
-## TODO: renormalize weights
 params['loss_weight_rec'] = 1.0
 params['loss_weight_sindy_z'] = 0.0001 
 params['loss_weight_sindy_x'] = 0.001

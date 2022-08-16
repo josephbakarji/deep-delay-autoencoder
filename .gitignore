@@ -1,4 +1,6 @@
 local_tests/
+local_data/
+results/
 __pycache__/
 .DS_Store
 

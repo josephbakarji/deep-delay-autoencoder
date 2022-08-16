@@ -9,11 +9,6 @@ from sindy_utils import sindy_simulate, sindy_library_names
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from lorenz import Lorenz
-from waterlorenz import LorenzWW
-from predprey import PredPrey
-from rossler import Rossler 
-
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt

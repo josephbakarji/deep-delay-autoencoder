@@ -10,11 +10,11 @@ import pdb
 class SynthData:
     def __init__(self, 
         model='lorenz',
-        args=[10, 8/3, 28.], 
+        args=None, 
         noise=0.0, 
         input_dim=128,
-        normalization=[1, 1, 1], 
-        poly_order=3):
+        normalization=None, 
+        poly_order=None):
 
         self.model = model
         self.args = args
