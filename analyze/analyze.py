@@ -8,7 +8,9 @@ import numpy as np
 from sindy_utils import sindy_simulate, sindy_library_names
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from solvers import SynthData
 
+import pickle5 as pickle
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -40,7 +42,8 @@ def pickle2dict(params):
             params2[key] = int(params2[key])
     for key in listwrap_to_list:
         if key in params2.keys():
-            params2[key] = list(params2[key])
+            if params2[key] is not None:
+                params2[key] = list(params2[key])
     return params2
 
 def get_checkpoint_names(cpath):
@@ -135,7 +138,7 @@ def delete_results(file_list, path):
         
 def make_inputs_svd(S, reduced_dim, scale):
     if reduced_dim is not None:
-        print('Running SVD decomposition...')
+        print('Running SVD...')
         U, s, VT = np.linalg.svd(S.x.T, full_matrices=False)
         v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
         if params['scale']:
@@ -145,6 +148,7 @@ def make_inputs_svd(S, reduced_dim, scale):
         S.x = v
         S.dx = np.gradient(v, params['dt'], axis=0)
         print('SVD Done!')
+    return S
 
 
 def read_results(name_list, 
@@ -182,6 +186,7 @@ def read_results(name_list,
                 noise=params['noise'], 
                 input_dim=params['input_dim'], 
                 normalization=params['normalization'])
+        print('Generating Test Solution...')
         S.run_sim(1, end_time, params['dt'])
         
 #         if params['model'] == 'lorenzww':
@@ -191,15 +196,15 @@ def read_results(name_list,
 #             data = L.get_solution(1, end_time, params['dt'])
 
         ## Get SVD data (write in separate function)
-        S = make_inputs_svd(S, reduced_dim, scale):
+        S = make_inputs_svd(S, params['svd_dim'], params['scale'])
             
         ## This seems arbitrary
         idx = int(end_time/params['dt']) 
         idx0 = int(start_time/params['dt']) 
-        test_data = [S.x[idx0:idx], S.dx[idx0:idx]]
+        test_data = [S.x[:, idx0:idx].T, S.dx[:, idx0:idx].T]
         test_time = S.t[idx0:idx]
         if params['svd_dim'] is not None:
-            test_data = [S.xorig[idx0:idx], S.x[idx0:idx], S.dx[idx0:idx]]
+            test_data = [S.xorig[:, idx0:idx].T] +  test_data
 
         prediction = model.predict(test_data)
         
@@ -223,12 +228,12 @@ def read_results(name_list,
         display(pd.DataFrame(model.sindy.coefficients_mask.numpy(), columns=varname[:params['latent_dim']], index=coef_names))
 
         print('-------- Parameters ------')
-        params = get_display_params(params, display_params=display_params)
+        disp_params = get_display_params(params, display_params=display_params)
         
 
 
         ## PLOT LOSSES
-        plot_losses(result)
+        plot_losses(result, t0_frac=t0_frac)
             
         testin = test_data[0]
         if params['svd_dim'] is not None:
@@ -245,10 +250,10 @@ def read_results(name_list,
         z_latent = model.encoder(testin).numpy()
         z0 = np.array(z_latent[0])
         z_sim = sindy_simulate(z0, test_time, model.sindy.coefficients_mask* model.sindy.coefficients, 
-                                params['poly_order'], include_sine, exact_features=exact_features)
+                                params['poly_order'], params['include_sine'], exact_features=params['exact_features'])
         
         if known_attractor:
-            original_sim = sindy_simulate(z0, test_time, data.sindy_coefficients, params['poly_order'], include_sine)
+            original_sim = sindy_simulate(z0, test_time, S.sindy_coefficients, params['poly_order'], params['include_sine'])
         else:
             original_sim = None
             
@@ -260,15 +265,16 @@ def read_results(name_list,
 
         plot_txy(test_time[:end_time_idx], testin[:end_time_idx, :], z_sim[:end_time_idx, :], n=1,
                 title='Input vs. Discovered 1st Dim.', names=['Input data', 'Discovered']) 
-        plot_txy(test_time[:end_time_idx], testin[:end_time_idx, :], z_latent[:end_time_idx, :], n=1
+        plot_txy(test_time[:end_time_idx], testin[:end_time_idx, :], z_latent[:end_time_idx, :], n=1,
                 title='Input vs. Latent z_0', names=['Input data', 'Latent']) 
 
-        plot3d_comparison(z_sim, z_latent, zorig=original_sim, title='Discovered SINDy dynamics')
+        if params['latent_dim'] > 2:
+            plot3d_comparison(z_sim, z_latent, zorig=original_sim, title='Discovered SINDy dynamics')
 
         if known_attractor:
-            plot_txy(time_time[:end_time_idx], original_sim[:end_time_idx, :], z_latent[:end_time_idx, :], 
+            plot_txy(test_time[:end_time_idx], original_sim[:end_time_idx, :], z_latent[:end_time_idx, :], 
                     n=z_latent.shape[1], names=['Original', 'Latent'], title='')
-            plot_txy(time_time[:end_time_idx], original_sim[:end_time_idx, :], z_sim[:end_time_idx, :],
+            plot_txy(test_time[:end_time_idx], original_sim[:end_time_idx, :], z_sim[:end_time_idx, :],
                     n=z_latent.shape[1], names=['Original', 'Discovered'], title='')
 
         plt.show()
@@ -280,38 +286,40 @@ def read_results(name_list,
             if answer == 'Y' or answer == 'y':
                 remove_files.append(name)
 
-    return non_existing_files, remove_files
+    return non_existing_models, non_existing_params, remove_files
 
 
 ###### PLOT FUNCTIONS ########
 
-def plot_txy_comparison(t, x, y, n=1, names=['x', 'y'], title='')
-    fig = plt.figure(figsize=(14, 10))
+def plot_txy(t, x, y, n=1, names=['x', 'y'], title=''):
+    fig = plt.figure(figsize=(12, 4))
     ax = []
     for i in range(n):
-        ax.append( fig.add_subplot(n, 1, i) )
+        axp = fig.add_subplot(n, 1, i+1)
+        ax.append( axp )
         ax[i].plot(t, x[:, i], 'b--', linewidth=2)
         ax[i].plot(t, y[:, i], 'r', linewidth=2)
         ax[i].legend([names[0], names[1]])
         ax[i].set_ylabel('x_'+str(i))
+    return ax
     
 def plot_portraits(z_sim, n=2, title=''):
-    if n=2:
+    if n==2:
         n_figs = 1
         figwidth = 3.5
-    elif n=3:
+    elif n==3:
         n_figs = 3
         figwidth=10
 
     fig = plt.figure(figsize=(figwidth, 3.5))
-    ax1 = fig.add_subplot(1, nfigs, 1)
+    ax1 = fig.add_subplot(1, n_figs, 1)
 
     ax1.plot(z_sim[:, 0], z_sim[:, 1], color = 'k', linewidth=1)
     ax1.set_label('x')
     ax1.set_label('y')
     ax1.set_title(title)
 
-    if n=3:
+    if n==3:
         ax2 = fig.add_subplot(1, 3, 2)
         ax2.plot(z_sim[:, 0], z_sim[:, 2], color = 'k', linewidth=1)
         ax2.set_label('x')
@@ -350,7 +358,7 @@ def plot3d_comparison(zsim, zlatent, zorig=None, title=''):
         ax2.view_init(azim=120)
 
 
-def plot_losses(result):
+def plot_losses(result, t0_frac=0.0):
     if result is not None:
         result_losses = result['losses'][0]
         losses_list = []

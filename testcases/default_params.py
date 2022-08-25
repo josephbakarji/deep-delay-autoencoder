@@ -1,9 +1,10 @@
 import os
 import sys
-sys.path.append('../../')
+sys.path.append('../src')
+from paths import ROOTPATH
 
 params = {}
-params['data_path'] = '/home/jbakarji/Documents/codes/deep-delay-autoencoder/testcases/results'
+params['data_path'] = ROOTPATH+'testcases/results/'
 
 params['case'] = 'rando'
 params['model'] = 'predator_prey'

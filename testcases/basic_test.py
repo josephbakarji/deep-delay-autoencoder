@@ -25,13 +25,13 @@ params['include_sine'] = True
 params['fix_coefs'] = False
 
 params['save_checkpoints'] = True 
-params['save_freq'] = 4 
+params['save_freq'] = 1 
 
 params['print_progress'] = True
 params['print_frequency'] = 5 
 
 # training time cutoffs
-params['max_epochs'] = 3000 
+params['max_epochs'] = 5
 params['patience'] = 70 
 
 # loss function weighting
