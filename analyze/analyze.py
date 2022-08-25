@@ -31,28 +31,6 @@ def params_names():
     return primary_params, secondary_params, tertiary_params
 
 
-def load_results(name, path='./results/'):
-    try:
-        model = tf.keras.models.load_model(path+name)
-    except:
-        print('model file doesnt exist')
-        model = None
-        
-    try:
-        params = pickle.load(open(path+name+'_params.pkl', 'rb'))
-    except:
-        print('params file doesnt not exist')
-        params = None
-    
-    try:
-        results = pickle.load(open(path+name+'_results.pkl', 'rb')) 
-    except:
-        results = None
-        print('no results file for ', name)
-
-    return model, params, results
-
-
 def pickle2dict(params):
     params2 = {key: val[0] for key, val in params.to_dict().items()}
     list_to_int = ['input_dim', 'latent_dim', 'poly_order', 'n_ics', 'include_sine', 'exact_features']
@@ -88,6 +66,8 @@ def get_names(cases, path):
     name_list = [name_list[i] for i in sortidx]
     return name_list
 
+
+
 def get_cases(path, filter_case=None, print_cases=True):
     directory = listdir(path)
     case_list = []
@@ -120,6 +100,38 @@ def get_display_params(params, display_params=None):
             print(key, ' : ', params[key])
     return filt_params
 
+
+def load_results(name, path='./results/'):
+    try:
+        model = tf.keras.models.load_model(path+name)
+    except:
+        print('model file doesnt exist')
+        model = None
+        
+    try:
+        params = pickle.load(open(path+name+'_params.pkl', 'rb'))
+    except:
+        print('params file doesnt not exist')
+        params = None
+    
+    try:
+        results = pickle.load(open(path+name+'_results.pkl', 'rb')) 
+    except:
+        results = None
+        print('no results file for ', name)
+
+    return model, params, results
+
+def delete_results(file_list, path):
+    dir_files = listdir(path)
+    for fdir in dir_files:
+        for fdelete in file_list:
+            if fdelete in fdir:
+                print('deleting: ', fdir)
+                if os.path.isdir(path+fdir):
+                    shutil.rmtree(path+fdir)
+                else:
+                    os.remove(path+fdir)
         
 def make_inputs_svd(S, reduced_dim, scale):
     if reduced_dim is not None:
@@ -134,7 +146,18 @@ def make_inputs_svd(S, reduced_dim, scale):
         S.dx = np.gradient(v, params['dt'], axis=0)
         print('SVD Done!')
 
-def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_time_plot=30, display_params=None, query_remove=False):
+
+def read_results(name_list, 
+                    path, 
+                    start_time=6, 
+                    end_time=30, 
+                    threshold=1e-2, 
+                    t0_frac=0.0, 
+                    end_time_plot=30, 
+                    display_params=None, 
+                    query_remove=False, 
+                    known_attractor=False):
+
     ## TODO: replace by global variable DATAPATH
     varname = list('xyz123')
     known_attractor = True
@@ -153,21 +176,6 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
         params = pickle2dict(params)
         end_time_idx = int(end_time_plot/params['dt'])
         
-        option = params['option']
-                
-        # When case can be compared with "original" attractor
-        if params['model'] in ['lorenzww']:
-            known_attractor = False
-            
-#         exact_features=False
-#         if 'exact_features' in params.keys():
-#             exact_features = bool(params['exact_features'])
-
-        coef_names = sindy_library_names(params['latent_dim'], 
-                                         params['poly_order'], 
-                                         include_sine=params['include_sine'], 
-                                         exact_features=params['exact_features'])
-        
         # FIX Experimental data
         S = SynthData(model=params['model'], 
                 args=params['system_coefficients'], 
@@ -185,9 +193,7 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
         ## Get SVD data (write in separate function)
         S = make_inputs_svd(S, reduced_dim, scale):
             
-        
         ## This seems arbitrary
-        start_time = 6
         idx = int(end_time/params['dt']) 
         idx0 = int(start_time/params['dt']) 
         test_data = [S.x[idx0:idx], S.dx[idx0:idx]]
@@ -199,40 +205,30 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
         
         if end_time_idx > test_data[0].shape[0]:
             end_time_idx = test_data[0].shape[0] 
-            
-            
-            
-        ## PLOT MAIN RESULTS
+
+        ## Display Optimal Coefficients 
+        coef_names = sindy_library_names(params['latent_dim'], 
+                                         params['poly_order'], 
+                                         include_sine=params['include_sine'], 
+                                         exact_features=params['exact_features'])
+
         print('------- COEFFICIENTS -------')
         df = pd.DataFrame((model.sindy.coefficients).numpy()*
                           (np.abs((model.sindy.coefficients).numpy()) > threshold).astype(float), 
                           columns=varname[:params['latent_dim']], 
                           index=coef_names)
         display(df)
+
         print('-------- Mask ------')
         display(pd.DataFrame(model.sindy.coefficients_mask.numpy(), columns=varname[:params['latent_dim']], index=coef_names))
+
         print('-------- Parameters ------')
         params = get_display_params(params, display_params=display_params)
         
-        ## PLOT LOSSES
-        if result is not None:
-            result_losses = result['losses'][0]
-            losses_list = []
-            for k in result['losses'][0].keys():
-                loss = k.split('_')
-                if loss[0] == 'val':
-                    losses_list.append(['_'.join(loss[1:]), k])
-            steps = len(result_losses['total_loss'])
-            idx0 = int(t0_frac*steps)
-            numrows = int(np.ceil(len(losses_list)/2))
 
-            fig0 = plt.figure(figsize=(10, 10))
-            for i, losses_couple in enumerate(losses_list):
-                fig0.add_subplot(numrows, 2, i+1)
-                for j, losses in enumerate(losses_couple):
-                    plt.plot(range(idx0, steps), result_losses[losses][idx0:], '.-', lw=2)
-                plt.title('validation_final = %.2e' % (result_losses[losses_couple[1]][-1]))
-                plt.legend(losses_couple)
+
+        ## PLOT LOSSES
+        plot_losses(result)
             
         testin = test_data[0]
         if params['svd_dim'] is not None:
@@ -247,154 +243,37 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
         plt.legend(['True test', 'Auto-encoder prediction'])
         
         z_latent = model.encoder(testin).numpy()
-        
-        ## COMPARE RECONSTRUCTION 
-#         z0 = data.z[idx0, :]
         z0 = np.array(z_latent[0])
+        z_sim = sindy_simulate(z0, test_time, model.sindy.coefficients_mask* model.sindy.coefficients, 
+                                params['poly_order'], include_sine, exact_features=exact_features)
         
         if known_attractor:
             original_sim = sindy_simulate(z0, test_time, data.sindy_coefficients, params['poly_order'], include_sine)
+        else:
+            original_sim = None
             
-        z_sim = sindy_simulate(z0, test_time, model.sindy.coefficients_mask* model.sindy.coefficients, params['poly_order'], include_sine, exact_features=exact_features)
-        
 
-        if params['latent_dim'] >= 3:
-            fig = plt.figure(figsize=(10, 3.5))
-            ax1 = fig.add_subplot(131, projection='3d')
-            ax1.plot(z_sim[:, 0], z_sim[:, 1], z_sim[:, 2], color = 'k', linewidth=1)
-            ax1.set_title('Discovered SINDy dynamics')
-            plt.axis('off')
-            ax1.view_init(azim=120)
+        ## PLOT RESULTS
+        # Assuming n=2 or n=3
+        plot_portraits(z_sim, n=params['latent_dim'], title='Discovered Simulated Dynamics')
+        plot_portraits(z_latent, n=params['latent_dim'], title='Latent Variable')
 
-            if params['model'] != 'lorenzww':
-                ax2 = fig.add_subplot(132, projection='3d')
-                ax2.plot(original_sim[:, 0], original_sim[:, 1], original_sim[:, 2], color = 'k', linewidth=1)
-                ax2.set_title('True dynamics')
-                plt.xticks([])
-                plt.axis('off')
-                ax2.view_init(azim=120)
+        plot_txy(test_time[:end_time_idx], testin[:end_time_idx, :], z_sim[:end_time_idx, :], n=1,
+                title='Input vs. Discovered 1st Dim.', names=['Input data', 'Discovered']) 
+        plot_txy(test_time[:end_time_idx], testin[:end_time_idx, :], z_latent[:end_time_idx, :], n=1
+                title='Input vs. Latent z_0', names=['Input data', 'Latent']) 
 
-            ax3 = fig.add_subplot(133, projection='3d')
-            ax3.plot(z_latent[:, 0], z_latent[:, 1], z_latent[:, 2], color = 'k', linewidth=1)
-            ax3.set_title('Latent projection')
-            plt.xticks([])
-            plt.axis('off')
-            ax3.view_init(azim=120)
+        plot3d_comparison(z_sim, z_latent, zorig=original_sim, title='Discovered SINDy dynamics')
 
+        if known_attractor:
+            plot_txy(time_time[:end_time_idx], original_sim[:end_time_idx, :], z_latent[:end_time_idx, :], 
+                    n=z_latent.shape[1], names=['Original', 'Latent'], title='')
+            plot_txy(time_time[:end_time_idx], original_sim[:end_time_idx, :], z_sim[:end_time_idx, :],
+                    n=z_latent.shape[1], names=['Original', 'Discovered'], title='')
 
-            fig = plt.figure(figsize=(10, 3.5))
-            ax1 = fig.add_subplot(131)
-            ax1.plot(z_sim[:, 0], z_sim[:, 1], color = 'k', linewidth=1)
-            ax1.set_label('x')
-            ax1.set_label('y')
-            ax1.set_title('discovered dynamics')
+        plt.show()
 
-            ax2 = fig.add_subplot(132)
-            ax2.plot(z_sim[:, 0], z_sim[:, 2], color = 'k', linewidth=1)
-            ax2.set_label('x')
-            ax2.set_label('z')
-            ax2.set_title('discovered dynamics')
-
-            ax3 = fig.add_subplot(133)
-            ax3.plot(z_sim[:, 1], z_sim[:, 2], color = 'k', linewidth=1)
-            ax3.set_label('y')
-            ax3.set_label('z')
-            ax3.set_title('discovered dynamics')
-
-            fig = plt.figure(figsize=(10, 3.5))
-            ax1 = fig.add_subplot(131)
-            ax1.plot(z_latent[:, 0], z_latent[:, 1], color = 'k', linewidth=1)
-            ax1.set_title('Latent projection')
-
-            ax2 = fig.add_subplot(132)
-            ax2.plot(z_latent[:, 0], z_latent[:, 2], color = 'k', linewidth=1)
-            ax2.set_title('Latent projection')
-
-            ax3 = fig.add_subplot(133)
-            ax3.plot(z_latent[:, 1], z_latent[:, 2], color = 'k', linewidth=1)
-            ax3.set_title('Latent projection')
-
-            if known_attractor:
-                fig = fig = plt.figure(figsize=(14, 10))
-                ax = fig.add_subplot(311)
-                ax.plot(test_time[:end_time_idx], original_sim[:end_time_idx, 0], 'b--', linewidth=2)
-                ax.plot(test_time[:end_time_idx], z_latent[:end_time_idx, 0], 'r', linewidth=2)
-                ax.legend(['Original', 'Latent z'])
-                ax.set_ylabel('x')
-
-                ax1 = fig.add_subplot(312)
-                ax1.plot(test_time[:end_time_idx], original_sim[:end_time_idx, 1], 'b--', linewidth=2)
-                ax1.plot(test_time[:end_time_idx], z_latent[:end_time_idx, 1], 'r', linewidth=2)
-                ax1.legend(['Original', 'Latent z'])
-                ax1.set_ylabel('y')
-
-                ax2 = fig.add_subplot(313)
-                ax2.plot(test_time[:end_time_idx] , original_sim[:end_time_idx, 2], 'b--', linewidth=2)
-                ax2.plot(test_time[:end_time_idx], z_latent[:end_time_idx, 2], 'r', linewidth=2)
-                ax2.legend(['Original', 'Latent z'])
-                
-                fig3 = plt.figure(figsize=(10, 3.5))
-                plt.plot(test_time[:end_time_idx], original_sim[:end_time_idx, 0], 'b--', linewidth=2)
-                plt.plot(test_time[:end_time_idx], z_sim[:end_time_idx, 0], 'r', linewidth=2)
-                plt.title('Original vs. Discovered')
-                plt.legend(['Original', 'Discovered'])
-                ax2.set_ylabel('z')
-
-            else:
-                fig3 = plt.figure(figsize=(10, 3.5))
-                plt.plot(test_time[:end_time_idx], testin[:end_time_idx, 0],  'b--', linewidth=2)
-                plt.plot(test_time[:end_time_idx], z_sim[:end_time_idx, 0], 'r', linewidth=2)
-                plt.title('Data vs. Discovered')
-                plt.legend(['Data', 'Discovered'])
-
-                fig3 = plt.figure(figsize=(10, 3.5))
-                plt.plot(test_time[:end_time_idx], testin[:end_time_idx, 0],  'b--', linewidth=2)
-                plt.plot(test_time[:end_time_idx], z_latent[:end_time_idx, 0], 'r', linewidth=2)
-                plt.title('Data vs. Latent')
-                plt.legend(['Data', 'Latent z'])
-
-            plt.show()
-            
-        if params['latent_dim'] == 2:
-            fig = plt.figure(figsize=(10, 3.5))
-            ax1 = fig.add_subplot(111)
-            ax1.plot(z_sim[:, 0], z_sim[:, 1], color = 'k', linewidth=1)
-            ax1.set_label('x')
-            ax1.set_label('y')
-            ax1.set_title('discovered dynamics')
-
-            fig = plt.figure(figsize=(10, 3.5))
-            ax1 = fig.add_subplot(111)
-            ax1.plot(z_latent[:, 0], z_latent[:, 1], color = 'k', linewidth=1)
-            ax1.set_title('Latent projection')
-            
-            if known_attractor:
-                fig = plt.figure(figsize=(10, 3.5))
-                ax1 = fig.add_subplot(111)
-                ax1.plot(original_sim[:, 0], original_sim[:, 1], color = 'k', linewidth=1)
-                ax1.set_title('True dynamics')
-
-                fig = fig = plt.figure(figsize=(14, 10))
-                ax = fig.add_subplot(211)
-                ax.plot(test_time, original_sim[:, 0],  'b--', linewidth=2)
-                ax.plot(test_time, z_latent[:, 0], 'r', linewidth=2)
-                ax.legend(['Original', 'Latent z'])
-                ax.set_ylabel('x')
-
-                ax1 = fig.add_subplot(212)
-                ax1.plot(test_time, original_sim[:, 1],  'b--', linewidth=2)
-                ax1.plot(test_time, z_latent[:, 1], 'r', linewidth=2)
-                ax1.legend(['Original', 'Latent z'])
-                ax1.set_ylabel('y')
-
-                fig3 = plt.figure(figsize=(10, 3.5))
-                plt.plot(test_time, original_sim[:, 0],  'b--', linewidth=2)
-                plt.plot(test_time, z_sim[:, 0], 'r', linewidth=2)
-                plt.title('Discovered vs. True dynamics')
-                plt.legend(['Original', 'Discovered'])
-
-            plt.show()
-
+        ## Data cleaing while going through results
         if query_remove:
             print('Do you want to remove this file? Y/N')
             answer = input()
@@ -404,13 +283,91 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
     return non_existing_files, remove_files
 
 
-def delete_results(file_list, path):
-    dir_files = listdir(path)
-    for fdir in dir_files:
-        for fdelete in file_list:
-            if fdelete in fdir:
-                print('deleting: ', fdir)
-                if os.path.isdir(path+fdir):
-                    shutil.rmtree(path+fdir)
-                else:
-                    os.remove(path+fdir)
+###### PLOT FUNCTIONS ########
+
+def plot_txy_comparison(t, x, y, n=1, names=['x', 'y'], title='')
+    fig = plt.figure(figsize=(14, 10))
+    ax = []
+    for i in range(n):
+        ax.append( fig.add_subplot(n, 1, i) )
+        ax[i].plot(t, x[:, i], 'b--', linewidth=2)
+        ax[i].plot(t, y[:, i], 'r', linewidth=2)
+        ax[i].legend([names[0], names[1]])
+        ax[i].set_ylabel('x_'+str(i))
+    
+def plot_portraits(z_sim, n=2, title=''):
+    if n=2:
+        n_figs = 1
+        figwidth = 3.5
+    elif n=3:
+        n_figs = 3
+        figwidth=10
+
+    fig = plt.figure(figsize=(figwidth, 3.5))
+    ax1 = fig.add_subplot(1, nfigs, 1)
+
+    ax1.plot(z_sim[:, 0], z_sim[:, 1], color = 'k', linewidth=1)
+    ax1.set_label('x')
+    ax1.set_label('y')
+    ax1.set_title(title)
+
+    if n=3:
+        ax2 = fig.add_subplot(1, 3, 2)
+        ax2.plot(z_sim[:, 0], z_sim[:, 2], color = 'k', linewidth=1)
+        ax2.set_label('x')
+        ax2.set_label('z')
+        ax2.set_title(title)
+
+        ax3 = fig.add_subplot(1, 3, 3)
+        ax3.plot(z_sim[:, 1], z_sim[:, 2], color = 'k', linewidth=1)
+        ax3.set_label('y')
+        ax3.set_label('z')
+        ax3.set_title(title)
+
+
+
+def plot3d_comparison(zsim, zlatent, zorig=None, title=''):
+    fig = plt.figure(figsize=(10, 3.5))
+    ax1 = fig.add_subplot(131, projection='3d')
+    ax1.plot(zsim[:, 0], zsim[:, 1], zsim[:, 2], color = 'k', linewidth=1)
+    ax1.set_title(title)
+    plt.axis('off')
+    ax1.view_init(azim=120)
+
+    ax3 = fig.add_subplot(132, projection='3d')
+    ax3.plot(zlatent[:, 0], zlatent[:, 1], zlatent[:, 2], color = 'k', linewidth=1)
+    ax3.set_title('Latent projection')
+    plt.xticks([])
+    plt.axis('off')
+    ax3.view_init(azim=120)
+
+    if zorig is not None:
+        ax2 = fig.add_subplot(133, projection='3d')
+        ax2.plot(zorig[:, 0], zorig[:, 1], zorig[:, 2], color = 'k', linewidth=1)
+        ax2.set_title('True dynamics')
+        plt.xticks([])
+        plt.axis('off')
+        ax2.view_init(azim=120)
+
+
+def plot_losses(result):
+    if result is not None:
+        result_losses = result['losses'][0]
+        losses_list = []
+        for k in result['losses'][0].keys():
+            loss = k.split('_')
+            if loss[0] == 'val':
+                losses_list.append(['_'.join(loss[1:]), k])
+        steps = len(result_losses['total_loss'])
+        idx0 = int(t0_frac*steps)
+        numrows = int(np.ceil(len(losses_list)/2))
+
+        fig0 = plt.figure(figsize=(10, 10))
+        for i, losses_couple in enumerate(losses_list):
+            fig0.add_subplot(numrows, 2, i+1)
+            for j, losses in enumerate(losses_couple):
+                plt.plot(range(idx0, steps), result_losses[losses][idx0:], '.-', lw=2)
+            plt.title('validation_final = %.2e' % (result_losses[losses_couple[1]][-1]))
+            plt.legend(losses_couple)
+    else:
+        print("NO LOSSES RESULTS FILE")
