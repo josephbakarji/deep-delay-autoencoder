@@ -3,7 +3,7 @@ import sys
 sys.path.append('../../')
 
 params = {}
-params['data_path'] = '/Users/josephbakarji/Documents/academic/research/delay-auto-embedding/github_repo/testcases/results'
+params['data_path'] = '/home/jbakarji/Documents/codes/deep-delay-autoencoder/testcases/results'
 
 params['case'] = 'rando'
 params['model'] = 'predator_prey'

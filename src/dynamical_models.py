@@ -1,8 +1,9 @@
 from sindy_utils import library_size
 import numpy as np
 
-def get_model(name, args=None, poly_order=None, normalization=None, use_sine=False):
+def get_model(name, args=None, normalization=None, use_sine=False):
 
+    
     if name == 'lorenz':
         args = np.array([10, 28, 8/3]) if args is None else np.array(args)
         f = lambda z, t: [args[0]*(z[1] - z[0]), 
@@ -11,7 +12,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
 
         dim = 3
         n = normalization if normalization is not None else np.ones((dim,))
-        poly_order = 2 if poly_order is None else poly_order
+        poly_order = 2 
 
         Xi = np.zeros((library_size(dim, poly_order), dim))
         Xi[1,0] = - args[0] 
@@ -25,6 +26,8 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
         z0_mean_sug = [0, 0, 25]
         z0_std_sug = [36, 48, 41]
 
+        
+        
     elif name == 'rossler':
         args = [0.2, 0.2, 5.7] if args is None else np.array(args)
         f = lambda z, t: [-z[1] -  z[2] ,
@@ -32,7 +35,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
                         args[1] + z[2]*(z[0] - args[2])]
         dim = 3
         n = normalization if normalization is not None else np.ones((dim,))
-        poly_order = 2 if poly_order is None else poly_order
+        poly_order = 2 
 
         Xi = np.zeros((library_size(dim, poly_order), dim))
         Xi[2,0] = -n[0]/n[1] 
@@ -46,6 +49,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
         z0_mean_sug = [0, 1, 0]
         z0_std_sug = [2, 2, 2]
 
+        
 
     elif name == 'predator_prey':
         args = [1.0, 0.1, 1.5, 0.75] if args is None else np.array(args)
@@ -53,7 +57,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
                         -args[2]*z[1] + args[1]*args[3]*z[0]*z[1] ]
         dim = 2
         n = normalization if normalization is not None else np.ones((dim,))
-        poly_order = 2 if poly_order is None else poly_order
+        poly_order = 2 
         Xi = np.zeros((library_size(dim, poly_order), dim))
         Xi[1,0] = args[0] 
         Xi[4,0] = -args[1] * n[0]/n[1]
@@ -63,6 +67,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
         z0_mean_sug = [10, 5]
         z0_std_sug = [8, 8]
 
+        
     elif name == 'pendulum':
         # Not easily renormalizable because f the sin(x) feature
         # g, L,
@@ -71,7 +76,7 @@ def get_model(name, args=None, poly_order=None, normalization=None, use_sine=Fal
                         -args[1]/args[0]*np.sin(z[0])]
         dim = 2
         n = normalization if normalization is not None else np.ones((dim,))
-        poly_order = 1 if poly_order is None else poly_order
+        poly_order = 1 
         use_sine = True  
 
         Xi = np.zeros((library_size(dim, poly_order, use_sine=use_sine), dim))

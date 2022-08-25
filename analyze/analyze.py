@@ -4,7 +4,7 @@ import os
 from os import listdir
 import shutil
 import numpy as np
-from training import load_model
+# from training import load_model
 from sindy_utils import sindy_simulate, sindy_library_names
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -15,6 +15,43 @@ import matplotlib.pyplot as plt
 from IPython.display import display
 import pdb
 pd.options.display.float_format = '{:,.3f}'.format
+
+
+def params_names():
+    my_params = ['loss_weight_integral', 'sindy_pert', 'svd_dim', 'model']
+
+    primary_params = ['case', 'coefficient_initialization', 'exact_features', 'fix_coefs', 'input_dim', 'latent_dim', 
+                     'loss_weight_integral', 'loss_weight_rec', 'loss_weight_sindy_regularization', 'loss_weight_sindy_x', 
+                     'loss_weight_sindy_z', 'loss_weight_x0', 'model', 'n_ics', 'widths_ratios', 'svd_dim']
+    secondary_params = ['activation', 'actual_coefficients', 'coefficient_threshold', 'dt', 'fixed_coefficient_mask', 'library_dim',
+                       'max_epochs', 'model_order', 'noise', 'option', 'patience', 'poly_order', 'print_frequency', 
+                        'save_checkpoints', 'save_freq', 'scale', 'sindy_pert']
+    tertiary_params = ['batch_size', 'data_path', 'include_sine', 'learning_rate', 'learning_rate_sched', 'print_progress']
+    
+    return primary_params, secondary_params, tertiary_params
+
+
+def load_results(name, path='./results/'):
+    try:
+        model = tf.keras.models.load_model(path+name)
+    except:
+        print('model file doesnt exist')
+        model = None
+        
+    try:
+        params = pickle.load(open(path+name+'_params.pkl', 'rb'))
+    except:
+        print('params file doesnt not exist')
+        params = None
+    
+    try:
+        results = pickle.load(open(path+name+'_results.pkl', 'rb')) 
+    except:
+        results = None
+        print('no results file for ', name)
+
+    return model, params, results
+
 
 def pickle2dict(params):
     params2 = {key: val[0] for key, val in params.to_dict().items()}
@@ -51,6 +88,24 @@ def get_names(cases, path):
     name_list = [name_list[i] for i in sortidx]
     return name_list
 
+def get_cases(path, filter_case=None, print_cases=True):
+    directory = listdir(path)
+    case_list = []
+    for name in directory:
+        if '.' not in name:
+            casename = '_'.join(name.split('_')[2:])
+            if filter_case is not None:
+                if fcase in name:
+                    for fcase in filter_case:
+                        case_list.append(casename)
+            else:
+                case_list.append(casename)
+    case_list = list(set(case_list))
+    if print_cases:
+        for case in case_list: 
+            print(case)
+    return case_list
+
 
 def get_display_params(params, display_params=None):
     filt_params = dict()
@@ -65,108 +120,97 @@ def get_display_params(params, display_params=None):
             print(key, ' : ', params[key])
     return filt_params
 
+        
+def make_inputs_svd(S, reduced_dim, scale):
+    if reduced_dim is not None:
+        print('Running SVD decomposition...')
+        U, s, VT = np.linalg.svd(S.x.T, full_matrices=False)
+        v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
+        if params['scale']:
+            scaler = StandardScaler()
+            v = scaler.fit_transform(v)
+        S.xorig = S.x
+        S.x = v
+        S.dx = np.gradient(v, params['dt'], axis=0)
+        print('SVD Done!')
 
 def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_time_plot=30, display_params=None, query_remove=False):
     ## TODO: replace by global variable DATAPATH
-    varname = ['x', 'y', 'z', '1', '2']
-    path = '../data/'
+    varname = list('xyz123')
     known_attractor = True
-    
-    
-    non_existing_files = []
+    non_existing_models = []
+    non_existing_params = []
     remove_files = []
+    
     for name in name_list:
         print('name: ', name)
-        model, params, result = load_model(name, path)
+        model, params, result = load_results(name, path)
         if model is None or params is None:
-            non_existing_files.append(name)
+            if model is None: non_existing_models.append(name)
+            if params is None: non_existing_params.append(name)
             continue
-            
-        params = {key: val[0] for key, val in params.to_dict().items()}
         
+        params = pickle2dict(params)
         end_time_idx = int(end_time_plot/params['dt'])
         
         option = params['option']
-        # Backward compatibility
-        if 'lorenz_coefficients' in params.keys():
-            coefficients = np.array(params['lorenz_coefficients'])
-        elif 'system_coefficients' in params.keys():
-            coefficients = np.array(params['system_coefficients'])
-        if 'model' not in params.keys():
-            params['model'] = 'lorenz'
-            
-        if 'model' in params.keys():
-            if params['model'] == 'lorenz':
-                PhysicalModel = Lorenz
-            elif params['model'] == 'predprey':
-                PhysicalModel = PredPrey
-            elif params['model'] == 'rossler':
-                PhysicalModel = Rossler 
-            elif params['model'] == 'lorenzww':
-                PhysicalModel = LorenzWW 
-            else:
-                raise Exception('model doesn"t exist')
                 
+        # When case can be compared with "original" attractor
         if params['model'] in ['lorenzww']:
             known_attractor = False
             
-        noise = params['noise']
-        input_dim = int(params['input_dim'])
-        latent_dim = int(params['latent_dim'])
-        poly_order = int(params['poly_order'])
-        IC_num = int(params['n_ics'])
+#         exact_features=False
+#         if 'exact_features' in params.keys():
+#             exact_features = bool(params['exact_features'])
 
-        dt = params['dt']
-        poly_order = int(params['poly_order'])
-        include_sine = bool(params['include_sine'])
-
-        exact_features=False
-        if 'exact_features' in params.keys():
-            exact_features = bool(params['exact_features'])
-
-        coef_names = sindy_library_names(latent_dim, poly_order, include_sine=False, exact_features=exact_features)
-        coef_names_full = sindy_library_names(latent_dim, poly_order, include_sine=False, exact_features=False)
+        coef_names = sindy_library_names(params['latent_dim'], 
+                                         params['poly_order'], 
+                                         include_sine=params['include_sine'], 
+                                         exact_features=params['exact_features'])
         
+        # FIX Experimental data
+        S = SynthData(model=params['model'], 
+                args=params['system_coefficients'], 
+                noise=params['noise'], 
+                input_dim=params['input_dim'], 
+                normalization=params['normalization'])
+        S.run_sim(1, end_time, params['dt'])
         
-        L = PhysicalModel(option=option, coefficients=coefficients, noise=noise, input_dim=input_dim, poly_order=poly_order)
-        if params['model'] == 'lorenzww':
-            L.filename='/home/joebakarji/delay-auto/main/examples/data/lorenzww.json'
-            data = L.get_solution()
-        else:
-            data = L.get_solution(1, end_time, dt)
+#         if params['model'] == 'lorenzww':
+#             L.filename='/home/joebakarji/delay-auto/main/examples/data/lorenzww.json'
+#             data = L.get_solution()
+#         else:
+#             data = L.get_solution(1, end_time, params['dt'])
 
-        if params['svd_dim'] is not None:
-            print('Running SVD decomposition...')
-            reduced_dim = int( params['svd_dim'] )
-            U, s, VT = np.linalg.svd(data.x.T, full_matrices=False)
-            v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
-            if params['scale']:
-                scaler = StandardScaler()
-                v = scaler.fit_transform(v)
-            data.xorig = data.x
-            data.x = v
-            data.dx = np.gradient(v, params['dt'], axis=0)
-            print('SVD Done!')
+        ## Get SVD data (write in separate function)
+        S = make_inputs_svd(S, reduced_dim, scale):
+            
         
+        ## This seems arbitrary
         start_time = 6
         idx = int(end_time/params['dt']) 
         idx0 = int(start_time/params['dt']) 
-        test_data = [data.x[idx0:idx], data.dx[idx0:idx]]
-        test_time = data.t[idx0:idx]
+        test_data = [S.x[idx0:idx], S.dx[idx0:idx]]
+        test_time = S.t[idx0:idx]
         if params['svd_dim'] is not None:
-            test_data = [data.xorig[idx0:idx], data.x[idx0:idx], data.dx[idx0:idx]]
+            test_data = [S.xorig[idx0:idx], S.x[idx0:idx], S.dx[idx0:idx]]
 
         prediction = model.predict(test_data)
         
         if end_time_idx > test_data[0].shape[0]:
             end_time_idx = test_data[0].shape[0] 
-
+            
+            
+            
         ## PLOT MAIN RESULTS
         print('------- COEFFICIENTS -------')
-        df = pd.DataFrame((model.sindy.coefficients).numpy()*(np.abs((model.sindy.coefficients).numpy())>threshold).astype(float), columns=varname[:latent_dim], index=coef_names)
+        df = pd.DataFrame((model.sindy.coefficients).numpy()*
+                          (np.abs((model.sindy.coefficients).numpy()) > threshold).astype(float), 
+                          columns=varname[:params['latent_dim']], 
+                          index=coef_names)
         display(df)
         print('-------- Mask ------')
-        display(pd.DataFrame(model.sindy.coefficients_mask.numpy(), columns=varname[:latent_dim], index=coef_names))
+        display(pd.DataFrame(model.sindy.coefficients_mask.numpy(), columns=varname[:params['latent_dim']], index=coef_names))
         print('-------- Parameters ------')
         params = get_display_params(params, display_params=display_params)
         
@@ -209,12 +253,12 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
         z0 = np.array(z_latent[0])
         
         if known_attractor:
-            original_sim = sindy_simulate(z0, test_time, data.sindy_coefficients, poly_order, include_sine)
+            original_sim = sindy_simulate(z0, test_time, data.sindy_coefficients, params['poly_order'], include_sine)
             
-        z_sim = sindy_simulate(z0, test_time, model.sindy.coefficients_mask* model.sindy.coefficients, poly_order, include_sine, exact_features=exact_features)
+        z_sim = sindy_simulate(z0, test_time, model.sindy.coefficients_mask* model.sindy.coefficients, params['poly_order'], include_sine, exact_features=exact_features)
         
 
-        if latent_dim >= 3:
+        if params['latent_dim'] >= 3:
             fig = plt.figure(figsize=(10, 3.5))
             ax1 = fig.add_subplot(131, projection='3d')
             ax1.plot(z_sim[:, 0], z_sim[:, 1], z_sim[:, 2], color = 'k', linewidth=1)
@@ -311,7 +355,7 @@ def read_results(name_list, path, end_time=30, threshold=1e-2, t0_frac=0.0, end_
 
             plt.show()
             
-        if latent_dim == 2:
+        if params['latent_dim'] == 2:
             fig = plt.figure(figsize=(10, 3.5))
             ax1 = fig.add_subplot(111)
             ax1.plot(z_sim[:, 0], z_sim[:, 1], color = 'k', linewidth=1)

@@ -13,15 +13,13 @@ class SynthData:
         args=None, 
         noise=0.0, 
         input_dim=128,
-        normalization=None, 
-        poly_order=None):
+        normalization=None):
 
         self.model = model
         self.args = args
         self.noise = noise
         self.input_dim = input_dim
         self.normalization = None 
-        self.poly_order = poly_order
 
     def solve_ivp(self, f, z0, time):
         """ Scipy ODE solver, returns z and dz/dt """
@@ -32,7 +30,7 @@ class SynthData:
     def run_sim(self, n_ics, tend, dt, z0_stat=None):
         """ Runs solver over multiple initial conditions and builds Hankel matrix """
 
-        f, Xi, model_dim, z0_mean_sug, z0_std_sug = get_model(self.model, self.args, self.poly_order, self.normalization)
+        f, Xi, model_dim, z0_mean_sug, z0_std_sug = get_model(self.model, self.args, self.normalization)
         self.normalization = self.normalization if self.normalization is not None else np.ones((model_dim,))
         if z0_stat is None:
             z0_mean = z0_mean_sug
