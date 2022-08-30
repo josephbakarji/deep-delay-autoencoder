@@ -1,5 +1,4 @@
 import sys
-sys.path.append('../examples/')
 import os
 import time
 import datetime
@@ -7,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pickle5 as pickle
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 from tensorflow.keras import layers
+import tensorflow as tf
 import pdb
 from sklearn.preprocessing import StandardScaler
 from sindy_utils import library_size, sindy_library
@@ -162,29 +161,7 @@ class TrainModel:
         model.save(os.path.join(self.params['data_path'], self.savename))
 
 #########################################################
-#########################################################
-    
-    
-def load_model(name, path='./data/'):
-    try:
-        model = tf.keras.models.load_model(path+name)
-    except:
-        print('model file doesnt exist')
-        model = None
-        
-    try:
-        params = pickle.load(open(path+name+'_params.pkl', 'rb'))
-    except:
-        print('params file doesnt not exist')
-        params = None
-    
-    try:
-        results = pickle.load(open(path+name+'_results.pkl', 'rb')) 
-    except:
-        results = None
-        print('no results file for ', name)
 
-    return model, params, results
 
 #########################################################
 #########################################################

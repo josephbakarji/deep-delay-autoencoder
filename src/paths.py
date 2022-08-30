@@ -1,1 +1,1 @@
-ROOTPATH='/Users/josephbakarji/Documents/academic/research/delay-auto-embedding/github_repo/'
+ROOTPATH='/home/jbakarji/Documents/codes/deep-delay-autoencoder/'

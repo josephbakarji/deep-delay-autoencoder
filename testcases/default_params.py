@@ -18,6 +18,10 @@ params['latent_dim'] = 2
 
 params['noise'] = 0.0
 params['interpolate'] = False
+params['interp_dt'] = 0.01
+params['interp_kind'] = 'cubic'
+params['interp_coefs'] = [21, 3]
+
 params['n_ics'] = 5
 
 params['train_ratio'] = 0.8
@@ -35,9 +39,9 @@ params['ode_net_widths'] = [1.5, 3]
 # sequential thresholding parameters
 params['coefficient_threshold'] = 1e-6 ## set to none for turning off RFE
 params['threshold_frequency'] = 100
-params['coefficient_initialization'] = 'true'
+params['coefficient_initialization'] = 'random_normal'
 params['fixed_coefficient_mask'] = False
-params['fix_coefs'] = True
+params['fix_coefs'] = False
 params['trainable_auto'] = True 
 params['sindy_pert'] = 0.0
 
@@ -46,8 +50,8 @@ params['loss_weight_rec'] = 1.0
 params['loss_weight_sindy_z'] = 0.0001 
 params['loss_weight_sindy_x'] = 0.001
 params['loss_weight_sindy_regularization'] = 1e-5
-params['loss_weight_integral'] = 0.0 #0.5 * 1/params['input_dim'] 
-params['loss_weight_x0'] = 0.0 #0.2 # Forces first element to be the same in x and z
+params['loss_weight_integral'] = 0.0 
+params['loss_weight_x0'] = 0.0  
 params['loss_weight_layer_l2'] = 0.0
 params['loss_weight_layer_l1'] = 0.0 
 

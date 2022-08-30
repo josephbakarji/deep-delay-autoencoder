@@ -1,10 +1,12 @@
 import sys
 sys.path.append("../src")
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 from os import listdir
 import shutil
 import numpy as np
-# from training import load_model
 from sindy_utils import sindy_simulate, sindy_library_names
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -25,7 +27,8 @@ def params_names():
     primary_params = ['case', 'coefficient_initialization', 'exact_features', 'fix_coefs', 'input_dim', 'latent_dim', 
                      'loss_weight_integral', 'loss_weight_rec', 'loss_weight_sindy_regularization', 'loss_weight_sindy_x', 
                      'loss_weight_sindy_z', 'loss_weight_x0', 'model', 'n_ics', 'widths_ratios', 'svd_dim']
-    secondary_params = ['activation', 'actual_coefficients', 'coefficient_threshold', 'dt', 'fixed_coefficient_mask', 'library_dim',
+    secondary_params = ['activation', 'actual_coefficients', 'coefficient_threshold', 'dt', 
+                        'fixed_coefficient_mask', 'library_dim',
                        'max_epochs', 'model_order', 'noise', 'option', 'patience', 'poly_order', 'print_frequency', 
                         'save_checkpoints', 'save_freq', 'scale', 'sindy_pert']
     tertiary_params = ['batch_size', 'data_path', 'include_sine', 'learning_rate', 'learning_rate_sched', 'print_progress']
@@ -162,7 +165,6 @@ def read_results(name_list,
                     query_remove=False, 
                     known_attractor=False):
 
-    ## TODO: replace by global variable DATAPATH
     varname = list('xyz123')
     known_attractor = True
     non_existing_models = []
@@ -172,6 +174,7 @@ def read_results(name_list,
     for name in name_list:
         print('name: ', name)
         model, params, result = load_results(name, path)
+        print('got results...')
         if model is None or params is None:
             if model is None: non_existing_models.append(name)
             if params is None: non_existing_params.append(name)

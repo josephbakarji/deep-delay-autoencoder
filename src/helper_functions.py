@@ -16,3 +16,8 @@ def get_hankel(x, dimension, delays, skip_rows=1):
     for j in range(delays):
         H[:, j] = x[j*skip_rows:j*skip_rows+dimension]
     return H
+
+def get_hankel_svd(H, reduced_dim):
+    U, s, VT = np.linalg.svd(H, full_matrices=False)
+    rec_v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
+    return U, s, VT, rec_v

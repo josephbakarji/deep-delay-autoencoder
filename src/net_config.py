@@ -1,5 +1,4 @@
 import sys
-sys.path.append("../examples")
 import os
 import datetime
 import pandas as pd

@@ -1,11 +1,15 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 from scipy.integrate import odeint
+from scipy import interpolate
 from sindy_utils import library_size
+from scipy.signal import savgol_filter
 from dynamical_models import get_model
 from helper_functions import get_hankel
 from tqdm import tqdm
 import pdb
+
+
 
 class SynthData:
     def __init__(self, 
@@ -65,3 +69,87 @@ class SynthData:
         self.dx = np.concatenate(dH, axis=1) 
         self.t = time
         self.sindy_coefficients = Xi.astype(np.float32)
+        
+        
+        
+        
+
+class RealData:
+    def __init__(self, 
+                input_dim=128,
+                interpolate=False,
+                interp_dt=0.01,
+                savgol_interp_coefs=[21, 3],
+                interp_kind='cubic'):
+
+        self.input_dim = input_dim
+        self.interpolate = interpolate 
+        self.interp_dt = interp_dt 
+        self.savgol_interp_coefs = savgol_interp_coefs
+        self.interp_kind = interp_kind
+    
+    def build_solution(self, data):
+        n_realizations = len(data['x'])
+        dt = data['dt']
+        if 'time' in data.keys():
+            times = data['time']
+        elif 'dt' in data.keys():
+            times = []
+            for xr in data['x']:
+                times.append(np.linspace(0, dt*len(xr), len(xr), endpoint=False))
+        
+        x = data['x']
+        if 'dx' in data.keys():
+            dx = data['dx']
+        else:
+            dx = [np.gradient(xr, dt) for xr in x]
+        
+        new_times = []
+        if self.interpolate:
+            new_dt = self.interp_dt # Include with inputs
+            print('old dt = ', dt)
+            print('new dt = ', new_dt)
+                    
+            # Smoothing and interpolation
+            for i in range(n_realizations):
+                a, b = self.savgol_interp_coefs
+                x[i] = savgol_filter(x[i], a, b)
+                if 'dx' in data.keys():
+                    dx[i] = savgol_filter(dx[i], a, b)
+
+                t = np.arange(times[i][0], times[i][-2], new_dt)
+                f = interpolate.interp1d(times[i], x[i], kind=self.interp_kind)
+                x[i] = f(t) 
+                df = interpolate.interp1d(times[i], dx[i], kind=self.interp_kind)
+                dx[i] = df(t)
+                    
+                times[i] = t
+#             new_times = np.array(new_times)
+                    
+        n = self.input_dim 
+        n_delays = n
+        xic = []
+        dxic = []
+        for j, xr in enumerate(x):
+            n_steps = len(xr) - self.input_dim 
+            xj = np.zeros((n_steps, n_delays))
+            dxj = np.zeros((n_steps, n_delays))
+            for k in range(n_steps):
+                xj[k, :] = xr[k:n_delays+k]
+                dxj[k, :] = dx[j][k:n_delays+k]
+            xic.append(xj)
+            dxic.append(dxj)
+        H = np.vstack(xic)
+        dH = np.vstack(dxic)
+        
+        self.t = np.hstack(times)
+        self.x = H.T
+        self.dx = dH.T
+        self.z = np.hstack(x) 
+        self.dz = np.hstack(dx)
+        self.sindy_coefficients = None # unused
+                
+#         # Align times
+#         for i in range(1, n_realizations):
+#             if times[i] - times[i-1] >= dt*2:
+#                 new_time[i] = new_time[i-1] + dt

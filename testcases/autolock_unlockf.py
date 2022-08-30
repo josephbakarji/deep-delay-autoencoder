@@ -13,10 +13,10 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from lorenz import Lorenz
 from training import TrainModel, get_callbacks
 from basic_params import params
 from basic_run import generate_data, train, get_hyperparameter_list
+from paths import ROOTPATH
 
 
 params['case'] = 'lockauto_unlockf'
@@ -38,7 +38,7 @@ params['scale'] = False  # try true
 params['widths_ratios'] = [0.75, 0.4, 0.2]
 params['sparse_weighting'] = None 
 params['normalization'] = [1/40, 1/40, 1/40] 
-params['data_path'] = '/home/joebakarji/delay-auto/main/examples/data/'
+params['data_path'] = ROOTPATH
 params['loss_weight_layer_l2'] = 0.0 
 params['loss_weight_layer_l1'] = 0.0 
 params['use_bias'] = True 
