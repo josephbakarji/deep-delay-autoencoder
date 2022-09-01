@@ -139,17 +139,17 @@ def delete_results(file_list, path):
                 else:
                     os.remove(path+fdir)
         
-def make_inputs_svd(S, reduced_dim, scale):
+def make_inputs_svd(S, reduced_dim, scale, dt):
     if reduced_dim is not None:
         print('Running SVD...')
         U, s, VT = np.linalg.svd(S.x.T, full_matrices=False)
         v = np.matmul(VT[:reduced_dim, :].T, np.diag(s[:reduced_dim]))
-        if params['scale']:
+        if scale:
             scaler = StandardScaler()
             v = scaler.fit_transform(v)
         S.xorig = S.x
         S.x = v
-        S.dx = np.gradient(v, params['dt'], axis=0)
+        S.dx = np.gradient(v, dt, axis=0)
         print('SVD Done!')
     return S
 
@@ -184,26 +184,30 @@ def read_results(name_list,
         end_time_idx = int(end_time_plot/params['dt'])
         
         # FIX Experimental data
-        S = SynthData(model=params['model'], 
-                args=params['system_coefficients'], 
-                noise=params['noise'], 
-                input_dim=params['input_dim'], 
-                normalization=params['normalization'])
-        print('Generating Test Solution...')
-        S.run_sim(1, end_time, params['dt'])
+        if real_data:
+            R = RealData(input_dim=params['input_dim'],
+            interpolate=params['interpolate'],
+            interp_dt=params['interp_dt'],
+            interp_kind=params['interp_kind'],
+            savgol_interp_coefs=params['interp_coefs'])
+
+            R.build_solution(data)
+        else:
+            S = SynthData(model=params['model'], 
+                    args=params['system_coefficients'], 
+                    noise=params['noise'], 
+                    input_dim=params['input_dim'], 
+                    normalization=params['normalization'])
+            print('Generating Test Solution...')
+            S.run_sim(1, end_time, params['dt'])
         
-#         if params['model'] == 'lorenzww':
-#             L.filename='/home/joebakarji/delay-auto/main/examples/data/lorenzww.json'
-#             data = L.get_solution()
-#         else:
-#             data = L.get_solution(1, end_time, params['dt'])
 
         ## Get SVD data (write in separate function)
-        S = make_inputs_svd(S, params['svd_dim'], params['scale'])
+        S = make_inputs_svd(S, params['svd_dim'], params['scale'], params['dt'])
             
         ## This seems arbitrary
-        idx = int(end_time/params['dt']) 
         idx0 = int(start_time/params['dt']) 
+        idx = int(end_time/params['dt']) 
         test_data = [S.x[:, idx0:idx].T, S.dx[:, idx0:idx].T]
         test_time = S.t[idx0:idx]
         if params['svd_dim'] is not None:

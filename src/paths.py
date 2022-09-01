@@ -1,1 +1,2 @@
-ROOTPATH='/home/jbakarji/Documents/codes/deep-delay-autoencoder/'
+ROOTPATH='/Users/dynamicslab/Documents/academic/research/deep-delay-autoencoder/'
+

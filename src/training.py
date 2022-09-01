@@ -158,6 +158,7 @@ class TrainModel:
         df.to_pickle(os.path.join(self.params['data_path'], self.savename + '_results.pkl'))
 
         # Save model
+        pdb.set_trace()
         model.save(os.path.join(self.params['data_path'], self.savename))
 
 #########################################################

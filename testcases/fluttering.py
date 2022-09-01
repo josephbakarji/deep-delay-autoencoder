@@ -21,7 +21,7 @@ params['model'] = 'fluttering'
 params['case'] = 'Re1000'
 params['system_coefficients'] = None
 params['noise'] = 0.0
-params['input_dim'] = 120
+params['input_dim'] = 20
 params['widths_ratios'] = [0.5, 0.25]
 params['poly_order'] = 2
 params['include_sine'] = False
@@ -32,14 +32,14 @@ params['interp_dt'] = 0.015
 params['interp_kind'] = 'cubic'
 params['interp_coefs'] = [21, 3]
 
-params['save_checkpoints'] = True 
+params['save_checkpoints'] = False
 params['save_freq'] = 5 
 
 params['print_progress'] = True
 params['print_frequency'] = 5 
 
 # training time cutoffs
-params['max_epochs'] = 300
+params['max_epochs'] = 3
 params['patience'] = 10 
 
 # loss function weighting
