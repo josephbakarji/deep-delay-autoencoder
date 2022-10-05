@@ -1,6 +1,5 @@
 # %%
 import sys
-sys.path.append("../../src")
 sys.path.append("../")
 import os
 
@@ -13,10 +12,10 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from training import TrainModel, get_callbacks
+from aesindy.training import TrainModel, get_callbacks
 from basic_params import params
 from basic_run import generate_data, train, get_hyperparameter_list
-from paths import ROOTPATH
+from config import ROOTPATH
 
 
 params['case'] = 'lockauto_unlockf'

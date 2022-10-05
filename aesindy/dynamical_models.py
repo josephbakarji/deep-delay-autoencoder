@@ -1,4 +1,4 @@
-from sindy_utils import library_size
+from .sindy_utils import library_size
 import numpy as np
 
 def get_model(name, args=None, normalization=None, use_sine=False):

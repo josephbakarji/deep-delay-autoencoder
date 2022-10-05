@@ -1,14 +1,7 @@
-import sys
-import os
-import datetime
-import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, regularizers
-from sindy_utils import library_size
-from sklearn.preprocessing import StandardScaler
 import pysindy as ps
-import pdb
     
 class SindyCall(tf.keras.callbacks.Callback):
     def __init__(self, threshold, update_freq, x, t):

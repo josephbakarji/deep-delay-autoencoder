@@ -1,13 +1,10 @@
-import sys
-sys.path.append('../src/')
-
 import pdb
 import json
 import numpy as np
-from training import TrainModel
-from solvers import RealData
+from aesindy.training import TrainModel
+from aesindy.solvers import RealData
 from default_params import params
-from paths import ROOTPATH
+from aesindy.config import ROOTPATH
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -49,7 +46,7 @@ params['loss_weight_layer_l2'] = 0.0
 params['loss_weight_layer_l1'] = 0.0 
 
 ## Read data
-output_json = json.load(open(ROOTPATH+'data/lorenzww.json'))
+output_json = json.load(open(os.path.join(ROOTPATH, 'data/lorenzww.json')))
 data = {
 'time': [np.array(time) for time in output_json['times']],
 'dt': output_json['times'][0][1]-output_json['times'][0][0],

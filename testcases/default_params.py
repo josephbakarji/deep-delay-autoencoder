@@ -1,10 +1,11 @@
 import os
-import sys
-sys.path.append('../src')
-from paths import ROOTPATH
+
+from aesindy.config import ROOTPATH
 
 params = {}
-params['data_path'] = ROOTPATH+'testcases/results/'
+params['data_path'] = os.path.join(ROOTPATH, 'testcases/results/')
+if not os.path.isdir(params['data_path']):
+    os.makedirs(params['data_path'])
 
 params['case'] = 'rando'
 params['model'] = 'predator_prey'
