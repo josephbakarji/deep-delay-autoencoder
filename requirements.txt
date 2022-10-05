@@ -1,0 +1,12 @@
+ipython
+mat73
+matplotlib
+numpy
+pandas
+pickle5
+pysindy
+scikit_learn
+scipy
+tensorflow
+tensorflow_macos
+tqdm
