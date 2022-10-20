@@ -483,6 +483,16 @@ class PreSVD_Sindy_Autoencoder(tf.keras.Model):
         x = datain[1]
         return self.decoder(self.encoder(x))
 
+    def compile(self,
+                optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+                loss=tf.keras.losses.BinaryCrossentropy(),
+                sindy_optimizer=None,
+                **kwargs):
+        super(AutoencoderSindy, self).compile(optimizer=optimizer, loss=loss, **kwargs)
+        if sindy_optimizer is None:
+            self.sindy_optimizer = tf.keras.optimizers.get(optimizer)
+        else:
+            self.sindy_optimizer = tf.keras.optimizers.get(sindy_optimizer)
     
     @tf.function
     def train_step(self, data):
@@ -497,11 +507,18 @@ class PreSVD_Sindy_Autoencoder(tf.keras.Model):
         # TRy data in tape and outside tape 
         with tf.GradientTape() as tape:
             loss, losses = self.get_loss(x, v, dv_dt, x_out, v_out, dv_dt_out)
-            
-        trainable_vars = self.trainable_variables
-        gradients = tape.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        
+
+        # split trainable variables for autoencoder and dynamics so that you can use seperate optimizers
+        trainable_vars = self.encoder.trainable_weights + self.decoder.trainable_weights + \
+                            self.sindy.trainable_weights
+        n_sindy_weights = len(self.sindy.trainable_weights)
+        grads = tape.gradient(total_loss, trainable_vars)
+        grads_autoencoder = grads[:-n_sindy_weights]
+        grads_sindy = grads[-n_sindy_weights:]
+
+        self.optimizer.apply_gradients(zip(grads_autoencoder, trainable_weights[:-n_sindy_weights]))
+        self.sindy_optimizer.apply_gradients(zip(grads_sindy, trainable_weights[-n_sindy_weights:]))
+
         ## Keep track and update losses
         self.update_losses(loss, losses)
         return {m.name: m.result() for m in self.metrics}
