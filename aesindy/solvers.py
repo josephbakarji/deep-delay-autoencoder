@@ -2,10 +2,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from scipy.integrate import odeint
 from scipy import interpolate
-from sindy_utils import library_size
 from scipy.signal import savgol_filter
-from dynamical_models import get_model
-from helper_functions import get_hankel
+from .dynamical_models import get_model
+from .helper_functions import get_hankel
 from tqdm import tqdm
 import pdb
 

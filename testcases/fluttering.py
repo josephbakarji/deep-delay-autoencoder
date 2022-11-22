@@ -1,16 +1,11 @@
-import sys
-sys.path.append('../src/')
-
-import pdb
-import json
 import numpy as np
-from training import TrainModel
-from solvers import RealData
+from aesindy.training import TrainModel
+from aesindy.solvers import RealData
 from default_params import params
-from paths import ROOTPATH
+from aesindy.config import ROOTPATH
 
 from scipy.io import loadmat
-import mat73
+
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"

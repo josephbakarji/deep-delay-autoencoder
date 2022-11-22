@@ -4,3 +4,10 @@ results/
 __pycache__/
 .DS_Store
 
+# pycharm
+*.idea
+
+/aesindy/config.py
+/build/
+/dist/
+/aesindy.egg-info/

@@ -10,8 +10,8 @@ from tensorflow.keras import layers
 import tensorflow as tf
 import pdb
 from sklearn.preprocessing import StandardScaler
-from sindy_utils import library_size, sindy_library
-from net_config import Sindy_Autoencoder, PreSVD_Sindy_Autoencoder, RfeUpdateCallback, SindyCall
+from .sindy_utils import library_size, sindy_library
+from .net_config import Sindy_Autoencoder, PreSVD_Sindy_Autoencoder, RfeUpdateCallback, SindyCall
 
 
 class TrainModel:

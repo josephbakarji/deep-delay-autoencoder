@@ -1,10 +1,8 @@
-import sys
-sys.path.append('../src/')
 
 import pdb
 import numpy as np
-from solvers import SynthData
-from training import TrainModel
+from aesindy.solvers import SynthData
+from aesindy.training import TrainModel
 from default_params import params
 
 import os

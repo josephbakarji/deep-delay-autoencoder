@@ -1,6 +1,6 @@
 # %%
 import sys
-sys.path.append("../../src")
+sys.path.append("../../aesindy")
 sys.path.append("../")
 import os
 
