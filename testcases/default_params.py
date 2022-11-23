@@ -46,6 +46,8 @@ params['fix_coefs'] = False
 params['trainable_auto'] = True 
 params['sindy_pert'] = 0.0
 
+params['verbose'] = 0
+
 # loss function weighting
 params['loss_weight_rec'] = 1.0
 params['loss_weight_sindy_z'] = 0.0001 
@@ -63,6 +65,7 @@ params['use_bias'] = True
 # training parameters
 params['batch_size'] = 32 
 params['learning_rate'] = 1e-3
+params['sindy_learning_rate'] = 7e-3
 params['learning_rate_sched'] = False 
 
 params['save_checkpoints'] = False 
