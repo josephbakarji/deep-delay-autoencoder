@@ -7,7 +7,7 @@ __pycache__/
 # pycharm
 *.idea
 
-/aesindy/config.py
+#/aesindy/config.py
 /build/
 /dist/
 /aesindy.egg-info/

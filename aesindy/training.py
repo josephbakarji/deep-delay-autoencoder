@@ -105,8 +105,8 @@ class TrainModel:
         os.makedirs(os.path.join(self.params['data_path'], self.savename, 'checkpoints'), exist_ok=True)
         
         # Build model and fit
-        optimizer = tf.keras.optimizers.Adam(lr=self.params['learning_rate'])
-        sindy_optimizer = tf.keras.optimizers.Adam(lr=self.params['sindy_learning_rate'])
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.params['learning_rate'])
+        sindy_optimizer = tf.keras.optimizers.Adam(learning_rate=self.params['sindy_learning_rate'])
         self.model.compile(optimizer=optimizer, sindy_optimizer=sindy_optimizer, loss='mse')
 
         callback_list = get_callbacks(self.params, self.savename, x=test_data[1])
@@ -159,7 +159,6 @@ class TrainModel:
         df.to_pickle(os.path.join(self.params['data_path'], self.savename + '_results.pkl'))
 
         # Save model
-        pdb.set_trace()
         model.save(os.path.join(self.params['data_path'], self.savename))
 
 #########################################################
