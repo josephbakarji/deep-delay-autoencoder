@@ -8,5 +8,5 @@ pysindy
 scikit_learn
 scipy
 tensorflow
-tensorflow_macos
+tensorflow-macos
 tqdm

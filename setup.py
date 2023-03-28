@@ -15,7 +15,7 @@ setup(
                       'pysindy',
                       'scikit_learn',
                       'scipy',
-                      'tensorflow-macos',
+                      'tensorflow',
                       'tqdm'],
     setup_requires=[],
     tests_require=[],

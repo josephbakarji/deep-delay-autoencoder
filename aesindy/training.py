@@ -11,7 +11,7 @@ import tensorflow as tf
 import pdb
 from sklearn.preprocessing import StandardScaler
 from .sindy_utils import library_size, sindy_library
-from .net_config import Sindy_Autoencoder, PreSVD_Sindy_Autoencoder, RfeUpdateCallback, SindyCall
+from .net_config import Sindy_Autoencoder, RfeUpdateCallback, SindyCall
 
 
 class TrainModel:
@@ -105,8 +105,9 @@ class TrainModel:
         os.makedirs(os.path.join(self.params['data_path'], self.savename, 'checkpoints'), exist_ok=True)
         
         # Build model and fit
-        optimizer = tf.keras.optimizers.Adam(lr=self.params['learning_rate'])
-        self.model.compile(optimizer=optimizer, loss='mse')
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.params['learning_rate'])
+        sindy_optimizer = tf.keras.optimizers.Adam(learning_rate=self.params['sindy_learning_rate'])
+        self.model.compile(optimizer=optimizer, sindy_optimizer=sindy_optimizer, loss='mse')
 
         callback_list = get_callbacks(self.params, self.savename, x=test_data[1])
         self.history = self.model.fit(
@@ -158,7 +159,6 @@ class TrainModel:
         df.to_pickle(os.path.join(self.params['data_path'], self.savename + '_results.pkl'))
 
         # Save model
-        pdb.set_trace()
         model.save(os.path.join(self.params['data_path'], self.savename))
 
 #########################################################
@@ -198,7 +198,7 @@ def get_callbacks(params, savename, x=None, t=None):
         checkpoint_path = os.path.join(params['data_path'], savename, 'checkpoints', 'cp-{epoch:04d}.ckpt')
         cp_callback = tf.keras.callbacks.ModelCheckpoint(
                         filepath=checkpoint_path, 
-                        verbose=1, 
+                        verbose=params['verbose'], 
                         save_weights_only=True,
                         save_freq=params['save_freq'] * int(params['tend']/params['dt']*params['n_ics']/ \
                                             params['batch_size'] * params['train_ratio']))
